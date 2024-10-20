@@ -1,8 +1,9 @@
 "use client"
 
-import {motion, useMotionValue, useMotionTemplate, useAnimate } from "framer-motion"
+import {motion, useAnimate } from "framer-motion"
 import { useState, useEffect } from "react"
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from "@/util/supabase/client"
 
 const items = [
@@ -15,24 +16,41 @@ const panelItems = [
   {name: "account", href: "/account"},
   {name: "setttings", href: "/settings"},
   {name: "dashboard", href: "/dashboard"},
-  {name: "cart", href: "/cart"},
+  {name: "shopping cart", href: "/shopping_cart"},
 
 ]
 
 const Menu = () => {
   
+  const router = useRouter()
+
   const [isHovered, setIsHovered] = useState(false)
   const [showPanel, setShowPanel] = useState(false)
   const [login, setLogin] = useState(false)
+  const [avatar, setAvatar] = useState("")
 
   const [scope, animate] = useAnimate()
   
   const supabase = createClient()
   
+  // 现在每次都重新请求，优化：只在用户登录后才请求
   const getUser = async() => {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      setLogin(true)
+      setLogin(true);
+      const email = user.email;
+      const { data, error } = await supabase.storage
+                                            .from('image')
+                                            .download(`private/${email}.jpg`)
+      if (data) {
+        // change a blob into datarurl
+        const url = URL.createObjectURL(data)
+        setAvatar(url)
+      } else {
+        console.log(error)
+        setAvatar("")
+      }
+
     }
   }
 
@@ -73,6 +91,7 @@ const Menu = () => {
         throw error
       }
       setLogin(false)
+      router.push('/signin')
     } catch (error) {
       console.log(error)
     }
@@ -92,10 +111,11 @@ const Menu = () => {
             </Link>
           ))
          }
+         
 
-         <div className="absolute right-[1%] top-[calc(50% - 4rem)] w-[8vh] h-[8vh] rounded-[50%] bg-slate-400"
-          onMouseEnter={() => setShowPanel(true)}>
-           
+         <div className="absolute right-[1%] top-[calc(50% - 4rem)] w-[8vh] h-[8vh] rounded-[50%]"
+          onMouseEnter={() => setShowPanel(true)} style={{backgroundImage: avatar!="" ? `url(${avatar})`: "linear-gradient(45deg, cyan, green)", backgroundPosition: "center", backgroundSize:"cover"}}>
+            
          </div>
     </motion.div>
     <div className="absolute right-0 top-[10vh] w-[40vh] h-[50vh] bg-[rgba(0,0,0,0.4)] text-white transition-all duration-[2] flex flex-col justify-center items-center gap-[3vh] z-30" style={{maxHeight: showPanel ? "50vh" : 0}} onMouseLeave={handleClosePanel}>
